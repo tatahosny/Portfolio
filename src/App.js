@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   FaGithub, FaExternalLinkAlt, FaVideo, FaEnvelope, FaPhone, FaLinkedin,
   FaReact, FaLaravel, FaNodeJs, FaJs, FaHtml5, FaCss3Alt, FaDatabase,
@@ -16,7 +16,6 @@ const TypeAnimation = ({ sequence, wrapper = "span", speed = 50, repeat = Infini
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [loopNum, setLoopNum] = useState(0);
 
   useEffect(() => {
     const currentItem = sequence[currentIndex];
@@ -69,6 +68,9 @@ function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [language, setLanguage] = useState('ar');
   const [isNavVisible, setIsNavVisible] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const navRef = useRef(null);
+  const mobileMenuBtnRef = useRef(null);
 
   // بيانات الترجمة
   const translations = {
@@ -214,15 +216,55 @@ function App() {
       } else {
         setIsNavVisible(false);
       }
+
+      // Close mobile menu on scroll
+      if (isMobileMenuOpen) {
+        setIsMobileMenuOpen(false);
+      }
+    };
+
+    // Handle click outside to close mobile menu
+    const handleClickOutside = (event) => {
+      if (navRef.current && !navRef.current.contains(event.target) &&
+          mobileMenuBtnRef.current && !mobileMenuBtnRef.current.contains(event.target)) {
+        setIsMobileMenuOpen(false);
+      }
     };
 
     window.addEventListener('scroll', handleScroll);
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
     
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
     };
-  }, []);
+  }, [isMobileMenuOpen]);
+
+  // إغلاق القائمة عند النقر على رابط
+  const handleNavLinkClick = () => {
+    setIsMobileMenuOpen(false);
+  };
+
+  // تبديل حالة القائمة المتنقلة
+  const toggleMobileMenu = () => {
+    setIsMobileMenuOpen(!isMobileMenuOpen);
+  };
+
+  // منع تمرير الصفحة عند فتح القائمة
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.classList.add('mobile-menu-open');
+    } else {
+      document.body.classList.remove('mobile-menu-open');
+    }
+
+    return () => {
+      document.body.classList.remove('mobile-menu-open');
+    };
+  }, [isMobileMenuOpen]);
 
   // بيانات المهارات مع الإيقونات
   const skillsData = {
@@ -375,6 +417,7 @@ function App() {
 
       {/* Navigation */}
       <motion.nav 
+        ref={navRef}
         className={`navbar ${isNavVisible ? 'visible' : ''}`}
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -392,15 +435,17 @@ function App() {
           
           {/* Mobile Menu Button */}
           <button 
-            className="mobile-menu-btn"
-            onClick={() => setIsNavVisible(!isNavVisible)}
+            ref={mobileMenuBtnRef}
+            className={`mobile-menu-btn ${isMobileMenuOpen ? 'active' : ''}`}
+            onClick={toggleMobileMenu}
           >
             <span></span>
             <span></span>
             <span></span>
           </button>
 
-          <div className={`nav-links ${isNavVisible ? 'active' : ''}`}>
+          {/* Desktop Navigation */}
+          <div className="nav-links desktop-nav">
             {['navHome', 'navSkills', 'navProjects', 'navContact'].map((link, index) => (
               <motion.a
                 key={link}
@@ -413,12 +458,64 @@ function App() {
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * (index + 1) }}
-                onClick={() => setIsNavVisible(false)}
               >
                 {t[link]}
               </motion.a>
             ))}
           </div>
+
+          {/* Mobile Navigation */}
+          <AnimatePresence>
+            {isMobileMenuOpen && (
+              <motion.div 
+                className="mobile-nav-overlay"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.3 }}
+                onClick={toggleMobileMenu}
+              >
+                <motion.div 
+                  className="mobile-nav-links"
+                  initial={{ x: language === 'ar' ? '100%' : '-100%' }}
+                  animate={{ x: 0 }}
+                  exit={{ x: language === 'ar' ? '100%' : '-100%' }}
+                  transition={{ type: "spring", damping: 25 }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="mobile-nav-header">
+                    <div className="mobile-logo">
+                      <FaCode className="logo-icon" />
+                      {t.heroName}
+                    </div>
+                    <button 
+                      className="close-menu-btn"
+                      onClick={toggleMobileMenu}
+                    >
+                      <span>×</span>
+                    </button>
+                  </div>
+                  
+                  <div className="mobile-nav-content">
+                    {['navHome', 'navSkills', 'navProjects', 'navContact'].map((link, index) => (
+                      <motion.a
+                        key={link}
+                        href={`#${link}`}
+                        className="mobile-nav-link"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.1 + 0.2 }}
+                        onClick={handleNavLinkClick}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        {t[link]}
+                      </motion.a>
+                    ))}
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </motion.nav>
 
