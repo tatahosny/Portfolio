@@ -306,8 +306,8 @@ function App() {
       image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&h=300&fit=crop",
       category: "frontend",
       technologies: ["React", "CSS3", "JavaScript", "Firebase"],
-      github: "https://tatahosny.github.io/hospital4",
-      live: "https://tatahosny.github.io/hospital4",
+      github: "https://tatahosny.github.io/hospital/",
+      live: "https://tatahosny.github.io/hospital/",
       featured: true
     },
     {
