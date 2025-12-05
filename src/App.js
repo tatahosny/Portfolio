@@ -314,7 +314,7 @@ function App() {
       id: 5,
       title: t.project2Title,
       description: t.project2Desc,
-      image: "https://www.bing.com/images/search?view=detailV2&ccid=VeuNDVHZ&id=5E0413517C54A36538657EB452824C13F3F19B6D&thid=OIP.VeuNDVHZYvKr6KvL7tgHswHaDi&mediaurl=https%3a%2f%2fmarketplace.canva.com%2fvQM4M%2fMAFeYZvQM4M%2f1%2ftl%2fcanva-busy-hospital-corridor-MAFeYZvQM4M.jpg&cdnurl=https%3a%2f%2fth.bing.com%2fth%2fid%2fR.55eb8d0d51d962f2abe8abcbeed807b3%3frik%3dbZvx8xNMglK0fg%26pid%3dImgRaw%26r%3d0&exph=263&expw=550&q=%d8%b5%d9%88%d8%a4%d8%a9+%d9%85%d8%b3%d8%aa%d8%b4%d9%81%d9%89&FORM=IRPRST&ck=C53442A4635C9E55BB8A29229D25F22B&selectedIndex=10&itb=0",
+      image: "https://marketplace.canva.com/vQM4M/MAFeYZvQM4M/1/tl/canva-busy-hospital-corridor-MAFeYZvQM4M.jpg",
       category: "frontend",
       technologies: ["React", "CSS3", "JavaScript", "Firebase"],
       github: "https://tatahosny.github.io/hospital4/",
