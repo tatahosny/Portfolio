@@ -11,55 +11,61 @@ import {
 } from 'react-icons/si';
 import './App.css';
 
-// مكون TypeAnimation البديل
+// مكون TypeAnimation البديل المعدل
 const TypeAnimation = ({ sequence, wrapper = "span", speed = 50, repeat = Infinity, className = "" }) => {
   const [currentText, setCurrentText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
+    if (isPaused) return;
+
     const currentItem = sequence[currentIndex];
-    const shouldDelete = isDeleting;
     
-    const tick = () => {
+    const timeout = setTimeout(() => {
       if (typeof currentItem === 'string') {
-        if (shouldDelete) {
-          setCurrentText(currentItem.substring(0, currentText.length - 1));
+        if (isDeleting) {
+          // Deleting text
+          if (currentText.length > 0) {
+            setCurrentText(currentText.substring(0, currentText.length - 1));
+          } else {
+            // Finished deleting, move to next item
+            setIsDeleting(false);
+            setCurrentIndex((prev) => (prev + 1) % sequence.length);
+          }
         } else {
-          setCurrentText(currentItem.substring(0, currentText.length + 1));
+          // Typing text
+          if (currentText.length < currentItem.length) {
+            setCurrentText(currentItem.substring(0, currentText.length + 1));
+          } else {
+            // Finished typing, pause then start deleting
+            setIsPaused(true);
+            setTimeout(() => {
+              setIsPaused(false);
+              setIsDeleting(true);
+            }, 1500); // Pause at the end
+          }
         }
-
-        let delta = 200 - Math.random() * 100;
-
-        if (shouldDelete) {
-          delta /= 2;
-        }
-
-        if (!shouldDelete && currentText === currentItem) {
-          delta = 2000;
-          setIsDeleting(true);
-        } else if (shouldDelete && currentText === '') {
-          setIsDeleting(false);
-          setCurrentIndex((prevIndex) => (prevIndex + 1) % sequence.length);
-          delta = 500;
-        }
-
-        setTimeout(() => tick(), delta);
       } else {
+        // If it's a number (pause duration)
         setTimeout(() => {
-          setCurrentIndex((prevIndex) => (prevIndex + 1) % sequence.length);
+          setCurrentIndex((prev) => (prev + 1) % sequence.length);
         }, currentItem);
       }
-    };
+    }, isDeleting ? speed / 2 : speed);
 
-    const timer = setTimeout(() => tick(), speed);
-
-    return () => clearTimeout(timer);
-  }, [currentText, currentIndex, isDeleting, sequence, speed]);
+    return () => clearTimeout(timeout);
+  }, [currentText, currentIndex, isDeleting, isPaused, sequence, speed]);
 
   const Wrapper = wrapper;
 
-  return <Wrapper className={className}>{currentText}</Wrapper>;
+  return (
+    <Wrapper className={`type-animation-text ${className}`}>
+      {currentText}
+      <span className="type-cursor">|</span>
+    </Wrapper>
+  );
 };
 
 function App() {
@@ -108,7 +114,7 @@ function App() {
       filterFrontend: "🎨 Frontend",
       filterEditing: "🎬 Video Editing",
       featuredText: "مميز",
-      visitProjectText: "Visit Project",
+      visitProjectText: "زيارة المشروع",
       
       // Projects Data
       project1Title: "موقع ل green shield system",
@@ -202,11 +208,14 @@ function App() {
 
   useEffect(() => {
     const handleMouseMove = (e) => {
-      setMousePosition({ x: e.clientX, y: e.clientY });
+      setMousePosition({ 
+        x: e.clientX, 
+        y: e.clientY 
+      });
     };
     
     // Simulate loading
-    setTimeout(() => setIsLoading(false), 2000);
+    const loadTimer = setTimeout(() => setIsLoading(false), 2000);
     window.addEventListener('mousemove', handleMouseMove);
 
     // Handle navbar visibility on scroll
@@ -236,6 +245,7 @@ function App() {
     document.addEventListener('touchstart', handleClickOutside);
     
     return () => {
+      clearTimeout(loadTimer);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('scroll', handleScroll);
       document.removeEventListener('mousedown', handleClickOutside);
@@ -376,12 +386,14 @@ function App() {
         >
           {t.loadingText}
         </motion.h2>
-        <motion.div 
-          className="loading-bar"
-          initial={{ width: 0 }}
-          animate={{ width: "100%" }}
-          transition={{ duration: 2, delay: 0.5 }}
-        />
+        <div className="loading-bar-container">
+          <motion.div 
+            className="loading-bar"
+            initial={{ width: 0 }}
+            animate={{ width: "100%" }}
+            transition={{ duration: 2, delay: 0.5 }}
+          />
+        </div>
       </motion.div>
     );
   }
@@ -398,12 +410,14 @@ function App() {
         <button 
           className={`lang-btn ${language === 'ar' ? 'active' : ''}`}
           onClick={() => setLanguage('ar')}
+          aria-label="Switch to Arabic"
         >
           العربية
         </button>
         <button 
           className={`lang-btn ${language === 'en' ? 'active' : ''}`}
           onClick={() => setLanguage('en')}
+          aria-label="Switch to English"
         >
           English
         </button>
@@ -419,7 +433,7 @@ function App() {
           }}
         />
         <div className="floating-shapes">
-          {[...Array(5)].map((_, i) => (
+          {[...Array(4)].map((_, i) => (
             <div key={i} className={`floating-shape shape-${i}`} />
           ))}
         </div>
@@ -437,11 +451,11 @@ function App() {
         <div className="nav-container">
           <motion.div 
             className="logo"
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.9 }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
           >
             <FaCode className="logo-icon" />
-            {t.heroName}
+            <span>{t.heroName}</span>
           </motion.div>
           
           {/* Mobile Menu Button */}
@@ -449,6 +463,8 @@ function App() {
             ref={mobileMenuBtnRef}
             className={`mobile-menu-btn ${isMobileMenuOpen ? 'active' : ''}`}
             onClick={toggleMobileMenu}
+            aria-label="Toggle mobile menu"
+            aria-expanded={isMobileMenuOpen}
           >
             <span></span>
             <span></span>
@@ -461,14 +477,12 @@ function App() {
               <motion.a
                 key={link}
                 href={`#${link}`}
-                whileHover={{ 
-                  scale: 1.1,
-                  color: "#3b82f6"
-                }}
+                whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 initial={{ opacity: 0, y: -20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 * (index + 1) }}
+                onClick={() => document.getElementById(link)?.scrollIntoView({ behavior: 'smooth' })}
               >
                 {t[link]}
               </motion.a>
@@ -502,6 +516,7 @@ function App() {
                     <button 
                       className="close-menu-btn"
                       onClick={toggleMobileMenu}
+                      aria-label="Close menu"
                     >
                       <span>×</span>
                     </button>
@@ -516,7 +531,10 @@ function App() {
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: index * 0.1 + 0.2 }}
-                        onClick={handleNavLinkClick}
+                        onClick={() => {
+                          handleNavLinkClick();
+                          document.getElementById(link)?.scrollIntoView({ behavior: 'smooth' });
+                        }}
                         whileTap={{ scale: 0.95 }}
                       >
                         {t[link]}
@@ -553,17 +571,17 @@ function App() {
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
           >
-            <span>{t.heroGreeting}</span>
+            <span className="hero-greeting">{t.heroGreeting}</span>
             <span className="hero-name">{t.heroName}</span>
-            <span className="type-text">
+            <div className="type-animation-wrapper">
               <TypeAnimation
-                sequence={typeTexts.flatMap(text => [text, 2000])}
+                sequence={typeTexts.flatMap(text => [text, 1500])}
                 wrapper="span"
                 speed={50}
                 repeat={Infinity}
-                className="animated-text"
+                className="type-text"
               />
-            </span>
+            </div>
           </motion.h1>
           
           <motion.p 
@@ -608,10 +626,20 @@ function App() {
                 boxShadow: "0 15px 30px rgba(59, 130, 246, 0.4)"
               }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => document.getElementById('navProjects').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('navProjects')?.scrollIntoView({ behavior: 'smooth' })}
+              aria-label="View projects"
             >
-              <FaCode className={language === 'ar' ? 'icon-right' : 'icon-left'} />
-              {t.btnProjectsText}
+              {language === 'ar' ? (
+                <>
+                  {t.btnProjectsText}
+                  <FaCode className="icon-right" />
+                </>
+              ) : (
+                <>
+                  <FaCode className="icon-left" />
+                  {t.btnProjectsText}
+                </>
+              )}
             </motion.button>
             <motion.button 
               className="btn secondary"
@@ -620,10 +648,20 @@ function App() {
                 boxShadow: "0 15px 30px rgba(59, 130, 246, 0.3)"
               }}
               whileTap={{ scale: 0.95 }}
-              onClick={() => document.getElementById('navContact').scrollIntoView({ behavior: 'smooth' })}
+              onClick={() => document.getElementById('navContact')?.scrollIntoView({ behavior: 'smooth' })}
+              aria-label="Contact me"
             >
-              <FaEnvelope className={language === 'ar' ? 'icon-right' : 'icon-left'} />
-              {t.btnContactText}
+              {language === 'ar' ? (
+                <>
+                  {t.btnContactText}
+                  <FaEnvelope className="icon-right" />
+                </>
+              ) : (
+                <>
+                  <FaEnvelope className="icon-left" />
+                  {t.btnContactText}
+                </>
+              )}
             </motion.button>
           </motion.div>
         </motion.div>
@@ -637,6 +675,7 @@ function App() {
               rotate: [0, 5, 0]
             }}
             transition={{ duration: 4, repeat: Infinity }}
+            aria-hidden="true"
           >
             <FaReact />
           </motion.div>
@@ -647,6 +686,7 @@ function App() {
               rotate: [0, -5, 0]
             }}
             transition={{ duration: 3, repeat: Infinity, delay: 1 }}
+            aria-hidden="true"
           >
             <FaLaravel />
           </motion.div>
@@ -657,6 +697,7 @@ function App() {
               rotate: [0, 8, 0]
             }}
             transition={{ duration: 5, repeat: Infinity, delay: 2 }}
+            aria-hidden="true"
           >
             <SiAdobepremierepro />
           </motion.div>
@@ -668,7 +709,11 @@ function App() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2 }}
-          onClick={() => document.getElementById('navSkills').scrollIntoView({ behavior: 'smooth' })}
+          onClick={() => document.getElementById('navSkills')?.scrollIntoView({ behavior: 'smooth' })}
+          role="button"
+          tabIndex={0}
+          onKeyPress={(e) => e.key === 'Enter' && document.getElementById('navSkills')?.scrollIntoView({ behavior: 'smooth' })}
+          aria-label="Scroll to skills section"
         >
           <div className="scroll-text">{t.scrollText}</div>
           <div className="scroll-arrow"></div>
@@ -682,10 +727,19 @@ function App() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
-          <FaCode className={language === 'ar' ? 'icon-right' : 'icon-left'} />
-          {t.skillsTitle}
+          {language === 'ar' ? (
+            <>
+              {t.skillsTitle}
+              <FaCode className="icon-right" />
+            </>
+          ) : (
+            <>
+              <FaCode className="icon-left" />
+              {t.skillsTitle}
+            </>
+          )}
         </motion.h2>
         
         <motion.p
@@ -693,7 +747,7 @@ function App() {
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           transition={{ delay: 0.3 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           {t.skillsSubtitle}
         </motion.p>
@@ -706,7 +760,7 @@ function App() {
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
               <h3 className="category-title">
                 <FaReact /> {t.frontendTitle}
@@ -720,11 +774,11 @@ function App() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.02 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: true, amount: 0.3 }}
                   >
                     <div className="skill-header">
                       <div className="skill-info">
-                        <span className="skill-icon">{skill.icon}</span>
+                        <span className="skill-icon" aria-hidden="true">{skill.icon}</span>
                         <span className="skill-name">{skill.name}</span>
                       </div>
                       <span className="skill-percentage">{skill.percentage}%</span>
@@ -735,7 +789,8 @@ function App() {
                         initial={{ width: 0 }}
                         whileInView={{ width: `${skill.percentage}%` }}
                         transition={{ duration: 1, delay: index * 0.1 }}
-                        viewport={{ once: true }}
+                        viewport={{ once: true, amount: 0.3 }}
+                        aria-label={`${skill.name} skill level: ${skill.percentage}%`}
                       />
                     </div>
                   </motion.div>
@@ -748,7 +803,7 @@ function App() {
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
               <h3 className="category-title">
                 <FaServer /> {t.backendTitle}
@@ -762,11 +817,11 @@ function App() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.02 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: true, amount: 0.3 }}
                   >
                     <div className="skill-header">
                       <div className="skill-info">
-                        <span className="skill-icon">{skill.icon}</span>
+                        <span className="skill-icon" aria-hidden="true">{skill.icon}</span>
                         <span className="skill-name">{skill.name}</span>
                       </div>
                       <span className="skill-percentage">{skill.percentage}%</span>
@@ -777,7 +832,8 @@ function App() {
                         initial={{ width: 0 }}
                         whileInView={{ width: `${skill.percentage}%` }}
                         transition={{ duration: 1, delay: index * 0.1 }}
-                        viewport={{ once: true }}
+                        viewport={{ once: true, amount: 0.3 }}
+                        aria-label={`${skill.name} skill level: ${skill.percentage}%`}
                       />
                     </div>
                   </motion.div>
@@ -792,7 +848,7 @@ function App() {
               initial={{ opacity: 0, y: 50 }}
               whileInView={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
               <h3 className="category-title">
                 <FaFilm /> {t.editingTitle}
@@ -806,11 +862,11 @@ function App() {
                     whileInView={{ opacity: 1, x: 0 }}
                     transition={{ delay: index * 0.1 }}
                     whileHover={{ scale: 1.02 }}
-                    viewport={{ once: true }}
+                    viewport={{ once: true, amount: 0.3 }}
                   >
                     <div className="skill-header">
                       <div className="skill-info">
-                        <span className="skill-icon">{skill.icon}</span>
+                        <span className="skill-icon" aria-hidden="true">{skill.icon}</span>
                         <span className="skill-name">{skill.name}</span>
                       </div>
                       <span className="skill-percentage">{skill.percentage}%</span>
@@ -821,7 +877,8 @@ function App() {
                         initial={{ width: 0 }}
                         whileInView={{ width: `${skill.percentage}%` }}
                         transition={{ duration: 1, delay: index * 0.1 }}
-                        viewport={{ once: true }}
+                        viewport={{ once: true, amount: 0.3 }}
+                        aria-label={`${skill.name} skill level: ${skill.percentage}%`}
                       />
                     </div>
                   </motion.div>
@@ -837,7 +894,7 @@ function App() {
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           <h3 className="section-title tools-main-title">
             {t.toolsTitle}
@@ -858,9 +915,10 @@ function App() {
                 whileInView={{ opacity: 1, scale: 1 }}
                 whileHover={{ scale: 1.1, y: -5 }}
                 transition={{ type: "spring", stiffness: 300, delay: index * 0.1 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.3 }}
+                role="listitem"
               >
-                <div className="tool-icon">{tool.icon}</div>
+                <div className="tool-icon" aria-hidden="true">{tool.icon}</div>
                 <span className="tool-name">{tool.name}</span>
               </motion.div>
             ))}
@@ -875,7 +933,7 @@ function App() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           {t.projectsTitle}
         </motion.h2>
@@ -886,7 +944,9 @@ function App() {
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
+          role="tablist"
+          aria-label="Project categories"
         >
           {[
             { key: 'all', text: t.filterAll },
@@ -900,6 +960,9 @@ function App() {
               onClick={() => setActiveCategory(category.key)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              role="tab"
+              aria-selected={activeCategory === category.key}
+              aria-controls="projects-grid"
             >
               {category.text}
             </motion.button>
@@ -907,7 +970,7 @@ function App() {
         </motion.div>
 
         {/* Projects Grid */}
-        <div className="projects-grid">
+        <div className="projects-grid" id="projects-grid" role="tabpanel">
           {filteredProjects.map((project, index) => (
             <motion.div
               key={project.id}
@@ -915,14 +978,20 @@ function App() {
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.2 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
               layout
             >
               {project.featured && (
-                <div className="featured-badge">⭐ {t.featuredText}</div>
+                <div className="featured-badge" aria-label="Featured project">
+                  ⭐ {t.featuredText}
+                </div>
               )}
               <div className="project-image">
-                <img src={project.image} alt={project.title} />
+                <img 
+                  src={project.image} 
+                  alt={project.title} 
+                  loading="lazy"
+                />
                 <div className="project-overlay">
                   <div className="project-links">
                     {project.github && (
@@ -933,6 +1002,7 @@ function App() {
                         whileTap={{ scale: 0.9 }}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`View ${project.title} on GitHub`}
                       >
                         <FaGithub />
                       </motion.a>
@@ -945,6 +1015,7 @@ function App() {
                         whileTap={{ scale: 0.9 }}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Visit ${project.title} live site`}
                       >
                         <FaExternalLinkAlt />
                       </motion.a>
@@ -957,6 +1028,7 @@ function App() {
                         whileTap={{ scale: 0.9 }}
                         target="_blank"
                         rel="noopener noreferrer"
+                        aria-label={`Watch ${project.title} video`}
                       >
                         <FaVideo />
                       </motion.a>
@@ -967,6 +1039,7 @@ function App() {
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.9 }}
                     onClick={() => window.open(project.live || project.video || project.github, '_blank')}
+                    aria-label={`Visit ${project.title}`}
                   >
                     {t.visitProjectText}
                   </motion.button>
@@ -976,7 +1049,7 @@ function App() {
               <div className="project-content">
                 <h3>{project.title}</h3>
                 <p>{project.description}</p>
-                <div className="project-tech">
+                <div className="project-tech" role="list">
                   {project.technologies.map((tech, techIndex) => (
                     <motion.span 
                       key={techIndex} 
@@ -984,7 +1057,8 @@ function App() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       whileInView={{ opacity: 1, scale: 1 }}
                       transition={{ delay: techIndex * 0.1 }}
-                      viewport={{ once: true }}
+                      viewport={{ once: true, amount: 0.3 }}
+                      role="listitem"
                     >
                       {tech}
                     </motion.span>
@@ -1003,7 +1077,7 @@ function App() {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           {t.contactTitle}
         </motion.h2>
@@ -1013,7 +1087,7 @@ function App() {
           initial={{ opacity: 0, y: 50 }}
           whileInView={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          viewport={{ once: true }}
+          viewport={{ once: true, amount: 0.3 }}
         >
           <div className="contact-content">
             <motion.div 
@@ -1021,7 +1095,7 @@ function App() {
               initial={{ opacity: 0, x: language === 'ar' ? -30 : 30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.5 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
             >
               <h3>{t.contactHeading}</h3>
               <p>{t.contactDesc}</p>
@@ -1034,7 +1108,8 @@ function App() {
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.7 }}
                   whileHover={{ scale: 1.05, x: language === 'ar' ? -10 : 10 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  aria-label="Send email to tatahosny208@gmail.com"
                 >
                   <FaEnvelope className="link-icon" />
                   <span>tatahosny208@gmail.com</span>
@@ -1047,7 +1122,8 @@ function App() {
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.8 }}
                   whileHover={{ scale: 1.05, x: language === 'ar' ? -10 : 10 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  aria-label="Call +20 1555973628"
                 >
                   <FaPhone className="link-icon" />
                   <span>+20 1555973628</span>
@@ -1062,7 +1138,8 @@ function App() {
                   whileHover={{ scale: 1.05, x: language === 'ar' ? -10 : 10 }}
                   target="_blank"
                   rel="noopener noreferrer"
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  aria-label="Visit GitHub profile"
                 >
                   <FaGithub className="link-icon" />
                   <span>GitHub</span>
@@ -1075,7 +1152,8 @@ function App() {
                   whileInView={{ opacity: 1, x: 0 }}
                   transition={{ delay: 1.0 }}
                   whileHover={{ scale: 1.05, x: language === 'ar' ? -10 : 10 }}
-                  viewport={{ once: true }}
+                  viewport={{ once: true, amount: 0.3 }}
+                  aria-label="Visit LinkedIn profile"
                 >
                   <FaLinkedin className="link-icon" />
                   <span>LinkedIn</span>
@@ -1088,35 +1166,63 @@ function App() {
               initial={{ opacity: 0, x: language === 'ar' ? 30 : -30 }}
               whileInView={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.8 }}
-              viewport={{ once: true }}
+              viewport={{ once: true, amount: 0.3 }}
               onSubmit={(e) => {
                 e.preventDefault();
-                alert(language === 'ar' ? 'شكراً لتواصلك! سأرد عليك قريباً.' : 'Thank you for contacting me! I will get back to you soon.');
+                const formData = new FormData(e.target);
+                const data = Object.fromEntries(formData);
+                
+                // Simulate form submission
+                alert(language === 'ar' 
+                  ? 'شكراً لتواصلك! سأرد عليك قريباً.' 
+                  : 'Thank you for contacting me! I will get back to you soon.'
+                );
+                
+                // Reset form
+                e.target.reset();
               }}
             >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.9 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.3 }}
               >
-                <input type="text" placeholder={t.contactName} required />
+                <input 
+                  type="text" 
+                  name="name"
+                  placeholder={t.contactName} 
+                  required 
+                  aria-label="Your name"
+                />
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.0 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.3 }}
               >
-                <input type="email" placeholder={t.contactEmail} required />
+                <input 
+                  type="email" 
+                  name="email"
+                  placeholder={t.contactEmail} 
+                  required 
+                  aria-label="Your email"
+                />
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.1 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.3 }}
               >
-                <textarea placeholder={t.contactMessage} rows="5" required></textarea>
+                <textarea 
+                  name="message"
+                  placeholder={t.contactMessage} 
+                  rows="5" 
+                  required
+                  aria-label="Your message"
+                ></textarea>
               </motion.div>
               <motion.button 
                 type="submit" 
@@ -1126,7 +1232,8 @@ function App() {
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: 1.2 }}
-                viewport={{ once: true }}
+                viewport={{ once: true, amount: 0.3 }}
+                aria-label="Send message"
               >
                 {t.submitText}
               </motion.button>
@@ -1141,7 +1248,7 @@ function App() {
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        viewport={{ once: true }}
+        viewport={{ once: true, amount: 0.3 }}
       >
         <p>{t.footerText}</p>
       </motion.footer>
